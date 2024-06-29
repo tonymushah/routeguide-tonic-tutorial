@@ -16,3 +16,11 @@ rand = "0.8"
 
 [build-dependencies]
 tonic-build = "0.11"
+
+[[bin]]
+name = "routeguide-server"
+path = "src/server.rs"
+
+[[bin]]
+name = "routeguide-client"
+path = "src/client.rs"
