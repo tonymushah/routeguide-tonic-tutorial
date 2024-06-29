@@ -4,6 +4,8 @@ use tokio::sync::mpsc;
 use tokio_stream::{wrappers::ReceiverStream, Stream};
 use tonic::{Request, Response, Status};
 
+pub mod data;
+
 pub mod routeguide {
     tonic::include_proto!("routeguide");
 }
