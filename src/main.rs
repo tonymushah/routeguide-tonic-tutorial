@@ -102,9 +102,27 @@ impl RouteGuide for RouteGuideService {
 
     async fn route_chat(
         &self,
-        _request: Request<tonic::Streaming<RouteNote>>,
+        request: Request<tonic::Streaming<RouteNote>>,
     ) -> Result<Response<Self::RouteChatStream>, Status> {
-        unimplemented!()
+        let mut notes = HashMap::new();
+        let mut stream = request.into_inner();
+
+        let output = async_stream::try_stream! {
+            while let Some(note) = stream.next().await {
+                let note = note?;
+
+                let location = note.location.clone().unwrap();
+
+                let location_notes = notes.entry(location).or_insert(vec![]);
+                location_notes.push(note);
+
+                for note in location_notes {
+                    yield note.clone();
+                }
+            }
+        };
+
+        Ok(Response::new(Box::pin(output) as Self::RouteChatStream))
     }
 }
 
