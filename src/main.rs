@@ -1,7 +1,10 @@
+use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::pin::Pin;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::mpsc;
+use tokio_stream::StreamExt;
 use tokio_stream::{wrappers::ReceiverStream, Stream};
 use tonic::{Request, Response, Status};
 
@@ -65,9 +68,34 @@ impl RouteGuide for RouteGuideService {
 
     async fn record_route(
         &self,
-        _request: Request<tonic::Streaming<Point>>,
+        request: Request<tonic::Streaming<Point>>,
     ) -> Result<Response<RouteSummary>, Status> {
-        unimplemented!()
+        let mut stream = request.into_inner();
+
+        let mut summary = RouteSummary::default();
+        let mut last_point = None;
+        let now = Instant::now();
+
+        while let Some(point) = stream.next().await {
+            let point = point?;
+            summary.point_count += 1;
+
+            for feature in &self.features[..] {
+                if feature.location.as_ref() == Some(&point) {
+                    summary.feature_count += 1;
+                }
+            }
+
+            if let Some(ref last_point) = last_point {
+                summary.distance += calc_distance(last_point, &point);
+            }
+
+            last_point = Some(point);
+        }
+
+        summary.elapsed_time = now.elapsed().as_secs() as i32;
+
+        Ok(Response::new(summary))
     }
 
     type RouteChatStream = Pin<Box<dyn Stream<Item = Result<RouteNote, Status>> + Send + 'static>>;
