@@ -6,6 +6,7 @@ use std::time::Instant;
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
 use tokio_stream::{wrappers::ReceiverStream, Stream};
+use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
 pub mod data;
@@ -166,6 +167,17 @@ fn calc_distance(p1: &Point, p2: &Point) -> i32 {
     (R * c) as i32
 }
 
-fn main() {
-    println!("Hello, world!");
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let addr = "[::1]:10000".parse().unwrap();
+
+    let route_guide = RouteGuideService {
+        features: Arc::new(data::load()),
+    };
+
+    let svc = RouteGuideServer::new(route_guide);
+
+    Server::builder().add_service(svc).serve(addr).await?;
+
+    Ok(())
 }
